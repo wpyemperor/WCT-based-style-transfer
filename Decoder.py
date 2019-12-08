@@ -4,7 +4,20 @@ import numpy as np
 from functools import reduce
 
 VGG_MEAN = [103.939, 116.779, 123.68]
+class WaveUnpool(nn.Module):
+    def __init__(self, in_channels, option_unpool='cat5'):
+        super(WaveUnpool, self).__init__()
+        self.in_channels = in_channels
+        self.option_unpool = option_unpool
+        self.LL, self.LH, self.HL, self.HH = get_wav(self.in_channels, pool=False)
 
+    def forward(self, LL, LH, HL, HH, original=None):
+        if self.option_unpool == 'sum':
+            return self.LL(LL) + self.LH(LH) + self.HL(HL) + self.HH(HH)
+        elif self.option_unpool == 'cat5' and original is not None:
+            return torch.cat([self.LL(LL), self.LH(LH), self.HL(HL), self.HH(HH), original], dim=1)
+        else:
+            raise NotImplementedError
 
 class Decoder:
     """
@@ -20,7 +33,7 @@ class Decoder:
         self.var_dict = {}
         self.trainable = trainable
         self.dropout = dropout
-        
+        self.upsample=WaveUnpool()
 
     
     def decoder(self,encode,target_layer) :
@@ -63,13 +76,13 @@ class Decoder:
         return decode , var_list
         #self.data_dict = None
 
-    def upsample(self,bottom,height):
-        height=height
-        width=height
+   # def upsample(self,bottom,height):
+      ##  height=height
+     #   width=height
         
-        new_height=height*2
-        new_width = width*2
-        return tf.image.resize_images(bottom, [new_height, new_width], tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+     #   new_height=height*2
+      #  new_width = width*2
+     #   return tf.image.resize_images(bottom, [new_height, new_width], tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
     def output_layer(self, bottom, in_channels, out_channels, name,var_list):
         with tf.variable_scope(name):
